@@ -140,7 +140,8 @@ module.exports = {
     clients: {
       my_client: process.env.ORIGOSERVER_AUTH_MY_CLIENT ?? 'https://www.myclient.se',
       my_other_client: process.env.ORIGOSERVER_AUTH_MY_OTHER_CLIENT ?? 'https://www.myotherclient.com'
-    }
+    },
+    scope: process.ORIGOSERVER_AUTH_SCOPE ?? 'openid'
   },
   ngpDetaljplan: {
     url_base: process.env.ORIGOSERVER_NGPDETALJPLAN_URL_BASE ?? "https://api.lantmateriet.se/",
