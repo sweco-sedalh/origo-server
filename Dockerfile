@@ -1,6 +1,14 @@
-FROM node:alpine
+FROM node:20 AS build
 WORKDIR /app
-COPY package.json /app
-RUN npm install
+COPY package.json package-lock.json /app/
+RUN npm ci --omit=dev
+
 COPY . /app
-CMD ["node","app.js"]
+
+FROM gcr.io/distroless/nodejs20-debian12
+
+EXPOSE 3001
+
+COPY --from=build /app /app
+WORKDIR /app
+CMD ["app.js"]
