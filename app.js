@@ -12,6 +12,19 @@ var conf = require('./conf/config');
 
 var app = express();
 
+if (process.env.ORIGOSERVER_TRUST_PROXY === 'true') {
+    // specified generally
+    app.set('trust proxy', true);
+} else if (process.env.ORIGOSERVER_TRUST_PROXY) {
+    try {
+        // specified as the number of hops allowed
+        app.set('trust proxy', parseInt(process.env.ORIGOSERVER_TRUST_PROXY));
+    } catch (_) {
+        // specified as an allowed IP adress or subnet
+        app.set('trust proxy', process.env.ORIGOSERVER_TRUST_PROXY);
+    }
+}
+
 const limiter = rateLimit({
 	windowMs: 5 * 60 * 1000, // 5 minutes
 	max: 10000, // Limit each IP to 10000 requests per `window` (here, per 15 minutes)
