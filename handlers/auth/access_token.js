@@ -9,6 +9,7 @@ module.exports = async function access_token(req, res) {
     let token_set = null;
     if (code && code.length && refresh_token && refresh_token.length) {
       res.status(400).send('Bad Request: Send either code or refresh token. Not both.');
+      return;
     } else if (code && code.length) {
       token_set = await client.grant({
         grant_type: 'authorization_code',
@@ -22,6 +23,7 @@ module.exports = async function access_token(req, res) {
       });
     } else {
       res.status(400).send('Bad Request: Neither code nor refresh token found.');
+      return;
     }
     const user_info = await client.userinfo(token_set.access_token);
     res.json({
