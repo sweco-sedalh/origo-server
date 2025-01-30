@@ -9,6 +9,8 @@ const lmApiProxy = require('./routes/lmapiproxy');
 var mapStateRouter = require('./routes/mapstate');
 var errors = require('./routes/errors');
 var conf = require('./conf/config');
+const cookieSession = require("cookie-session");
+const proxy = require("express-http-proxy");
 
 var app = express();
 
@@ -62,6 +64,25 @@ app.set('views', path.join(__dirname, 'views'));
 
 // uncomment after placing your favicon in /public
 //app.use(favicon(__dirname + '/public/favicon.ico'));
+app.use(cookieSession({
+    name: "origo-auth",
+    keys: [conf.secret, conf.secret],
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    cookie: {
+        secure: true,
+        httpOnly: true,
+    }
+}));
+
+app.use("/origoserver/proxy2", proxy("http://geoserver:8080/geoserver", {
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+        const token = srcReq.session.auth.accessToken;
+        proxyReqOpts.headers["Authorization"] = "Bearer " + token;
+        proxyReqOpts.headers["cookie"] = "";
+        return proxyReqOpts;
+    }
+}));
+
 app.use(bodyParser.json({limit: "5mb"}));
 app.use(bodyParser.urlencoded({limit: "5mb", extended: true, parameterLimit:50000}));
 app.use(express.json({limit: '5mb'}));

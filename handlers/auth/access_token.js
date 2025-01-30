@@ -26,6 +26,10 @@ module.exports = async function access_token(req, res) {
       return;
     }
     const user_info = await client.userinfo(token_set.access_token);
+    req.session.auth = {
+      accessToken: token_set.access_token,
+      refreshToken: token_set.refresh_token,
+    };
     res.json({
       authenticated: true,
       access_token: token_set.access_token,

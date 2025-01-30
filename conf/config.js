@@ -1,6 +1,7 @@
 var configutil = require('../lib/utils/configutil');
 
 module.exports = {
+  secret: process.env.ORIGOSERVER_SECRET ?? "change-me",
   mapState: {
     'storagePath': process.env.ORIGOSERVER_MAPSTATE_STORAGEPATH ?? 'OrigoMapState' // Path to map state storage. Current path will save map state to a folder named OrigoMapState in the origo-server directory.
   },
@@ -141,7 +142,7 @@ module.exports = {
       my_client: process.env.ORIGOSERVER_AUTH_MY_CLIENT ?? 'https://www.myclient.se',
       my_other_client: process.env.ORIGOSERVER_AUTH_MY_OTHER_CLIENT ?? 'https://www.myotherclient.com'
     },
-    scope: process.ORIGOSERVER_AUTH_SCOPE ?? 'openid'
+    scope: process.env.ORIGOSERVER_AUTH_SCOPE ?? 'openid'
   },
   ngpDetaljplan: {
     url_base: process.env.ORIGOSERVER_NGPDETALJPLAN_URL_BASE ?? "https://api.lantmateriet.se/",
