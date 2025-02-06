@@ -15,8 +15,10 @@ function postHandler(req, res) {
   var objArray = req.body;
 
   Object.entries(objArray).forEach(entry => {
-    sheet.addRow([entry[0]]);
-    sheet.addRow(Object.keys(entry[1][0]));
+    if (req.query.headers !== "none") {
+      sheet.addRow([entry[0]]);
+      sheet.addRow(Object.keys(entry[1][0]));
+    }
 
     entry[1].forEach(function (item) {
       sheet.addRow(Object.values(item));
