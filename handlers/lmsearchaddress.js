@@ -32,18 +32,6 @@ const lmSearchAddress = async (req, res) => {
     const searchString = parsedUrl.query.q || '';
     const northing = parsedUrl.query.northing || undefined;
     const easting = parsedUrl.query.easting || undefined;
-    var searchArray = searchString.split(' ');
-    var municipality = searchArray[0];
-    var municipalityArray = municipality.split(',');
-    var index;
-    var searchValue = '';
-    for (index = 0; index < searchArray.length; ++index) {
-      if (index == 1) {
-        searchValue = searchArray[index];
-      } else if (index > 1) {
-        searchValue = searchValue + ' ' + searchArray[index];
-      }
-    }
     if ('srid' in parsedUrl.query) {
       srid = parsedUrl.query.srid;
     } else {
@@ -64,7 +52,7 @@ const lmSearchAddress = async (req, res) => {
     } else {
       statusAddress = 'Gällande';
     }
-    if ('municipalityCodes' in parsedUrl.query) {
+    if ('municipalityCodes' in parsedUrl.query && parsedUrl.query.municipalityCodes.trim().length > 0) {
       municipalityCodes = parsedUrl.query.municipalityCodes.split(',');
     } else {
       municipalityCodes = [];
@@ -77,7 +65,7 @@ const lmSearchAddress = async (req, res) => {
         await doSearchWithCodesAsyncCall(municipalityCodes, searchString);
       } else {
         // Do a free text search to get the IDs of all that matches
-        await doSearchAsyncCall(municipalityArray, searchValue);
+        await doSearchAsyncCall(searchString);
       }
 
       // Allow a maximum of 250 objects
@@ -192,53 +180,29 @@ async function doSearchWithCodesAsyncCall(municipalityCodes, searchValue) {
     });
 }
 
-async function doSearchAsyncCall(municipalityArray, searchValue) {
-  var returnValue = [];
-  var promiseArray = [];
-  // Split all the separate municipality given to individual searches
-  municipalityArray.forEach(function(municipality) {
-    var searchUrl = encodeURI(configOptions.url + '/referens/fritext?adress=' + searchValue.replaceAll(',','') + ' ' + municipality + '&status=' + statusAddress + '&maxHits=' + maxHits)
-    // Setup the search call and wait for result
-    const options = {
-        url: searchUrl,
-        method: 'GET',
-        headers: {
-          'content-type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'scope': `${scope}`
+async function doSearchAsyncCall(searchValue) {
+  var searchUrl = encodeURI(configOptions.url + '/referens/fritext?adress=' + searchValue.replaceAll(',','') + '&status=' + statusAddress + '&maxHits=' + maxHits)
+  // Setup the search call and wait for result
+  const options = {
+      url: searchUrl,
+      method: 'GET',
+      headers: {
+        'content-type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'scope': `${scope}`
+      }
+  }
+  await rp.get(options)
+    .then(function(result) {
+      var parameters = JSON.parse(result);
+      var objektidentitet = [];
+
+      parameters.forEach(function(parameter) {
+        if (parameter.objektidentitet) {
+          objektidentitet.push(parameter.objektidentitet);
         }
-    }
-    promiseArray.push(rp.get(options)
-      .then(function(result) {
-        var parameters = JSON.parse(result);
-        var objektidentitet = [];
-
-        parameters.forEach(function(parameter) {
-          if (parameter.objektidentitet) {
-            objektidentitet.push(parameter.objektidentitet);
-          }
-        });
-        return objektidentitet;
-      })
-    )
-  });
-
-  await Promise.all(promiseArray)
-    .then(function (resArr) {
-        // Save the response to be handled in finally
-        returnValue = resArr;
-    })
-    .catch(function (err) {
-        // If fail return empty array
-        objectIds = [];
-    })
-    .finally(function () {
-        // When all search has finished concat them to a single array of object Ids
-        var newArray = [];
-        returnValue.forEach(function(search) {
-          newArray = newArray.concat(search);
-        });
-        objectIds = newArray;
+      });
+      objectIds = objektidentitet;
     });
 }
 

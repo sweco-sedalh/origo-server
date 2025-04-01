@@ -32,12 +32,8 @@ const lmSearchPlacename = async (req, res) => {
     if ('kommunkod' in parsedUrl.query) {
       kommunkod = parsedUrl.query.kommunkod;
       var kommunkod = parsedUrl.query.kommunkod;
-      var municipalityArray = kommunkod.split(',');
-      if (municipalityArray.length > 0) {
-        var lmuser = parsedUrl.query.lmuser;
+      var municipalityArray = kommunkod.length > 0 ? kommunkod.split(',') : [];
         var q = parsedUrl.query.q;
-        var page = parsedUrl.query.page;
-        var start = parsedUrl.query.start;
         var limit = parsedUrl.query.limit;
         var lang = parsedUrl.query.lang;
         var nametype = parsedUrl.query.nametype;
@@ -70,10 +66,6 @@ const lmSearchPlacename = async (req, res) => {
         }
         searchUrl = searchUrl + '&srid=' + srid;
         doSearchAsyncCall(req, res, municipalityArray, searchUrl);
-      } else {
-        console.log('Skip');
-        res.send({});
-      }
     } else {
       console.log('Skip');
       res.send({});
@@ -122,11 +114,10 @@ async function getTokenAsyncCall(consumer_key, consumer_secret, scope) {
 async function doSearchAsyncCall(req, res, municipalityArray, urlParams) {
   var returnValue = [];
   var promiseArray = [];
-  // Split all the separate municipality given to individual searches
-  municipalityArray.forEach(function(municipality) {
-    var searchUrl = encodeURI(configOptions.url + urlParams + '&kommunkod=' + municipality)
-    // Setup the search call and wait for result
-    const options = {
+  if (municipalityArray.length === 0) {
+      var searchUrl = encodeURI(configOptions.url + urlParams)
+      // Setup the search call and wait for result
+      const options = {
         url: searchUrl,
         method: 'GET',
         headers: {
@@ -134,22 +125,51 @@ async function doSearchAsyncCall(req, res, municipalityArray, urlParams) {
           'Authorization': `Bearer ${token}`,
           'scope': `${scope}`
         }
-    }
-    promiseArray.push(
-      rp(options)
-      .then(function (result) {
-        var parameters = JSON.parse(result);
-        var newRes = [];
-        newRes = concatResult(parameters.features, municipality);
-        return newRes;
-      })
-      .catch(function (err) {
-        console.log(err);
-        console.log('ERROR doSearchAsyncCall!');
-        res.send({});
-      })
-    )
-  });
+      }
+      promiseArray.push(
+          rp(options)
+              .then(function (result) {
+                var parameters = JSON.parse(result);
+                var newRes = [];
+                newRes = concatResult(parameters.features);
+                return newRes;
+              })
+              .catch(function (err) {
+                console.log(err);
+                console.log('ERROR doSearchAsyncCall!');
+                res.send({});
+              })
+      )
+  } else {
+    // Split all the separate municipality given to individual searches
+    municipalityArray.forEach(function (municipality) {
+      var searchUrl = encodeURI(configOptions.url + urlParams + '&kommunkod=' + municipality)
+      // Setup the search call and wait for result
+      const options = {
+        url: searchUrl,
+        method: 'GET',
+        headers: {
+          'content-type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'scope': `${scope}`
+        }
+      }
+      promiseArray.push(
+          rp(options)
+              .then(function (result) {
+                var parameters = JSON.parse(result);
+                var newRes = [];
+                newRes = concatResult(parameters.features);
+                return newRes;
+              })
+              .catch(function (err) {
+                console.log(err);
+                console.log('ERROR doSearchAsyncCall!');
+                res.send({});
+              })
+      )
+    });
+  }
 
   await Promise.all(promiseArray)
     .then(function (resArr) {
@@ -170,29 +190,27 @@ async function doSearchAsyncCall(req, res, municipalityArray, urlParams) {
     });
 }
 
-function concatResult(placenames, municipality) {
+function concatResult(placenames) {
   const result = [];
 
   // Check to see if there are multiple hits or a single
   if (Array.isArray(placenames)) {
     placenames.forEach((placename) => {
-      result.push(getOrtnamn(placename, municipality));
+      result.push(getOrtnamn(placename));
     })
   } else {
     if (typeof placenames === 'undefined') {
       // placenames is undefined do nothing
     } else {
-      result.push(getOrtnamn(placenames, municipality));
+      result.push(getOrtnamn(placenames));
     }
   }
   return result;
 }
 
-function getOrtnamn(placename, municipality) {
+function getOrtnamn(placename) {
   const id = placename.id;
   const namn = placename.properties.namn;
-  let lanskod = '';
-  let kommunkod = '';
   let kommunnamn = '';
   let coordinatesNE = [];
   // Check to see if feature has none or multiple coordinates
@@ -200,13 +218,7 @@ function getOrtnamn(placename, municipality) {
     // OBS! If there is a multipoint in the response it only uses the first coordinates
     const coordinates = placename.properties.placering[0].punkt.coordinates;
     coordinatesNE.push([coordinates[1], coordinates[0]]);
-    lanskod = placename.properties.placering[0].lankod;
-    kommunkod = placename.properties.placering[0].kommunkod;
     kommunnamn = placename.properties.placering[0].kommunnamn;
-  }
-  // If the kommunkod wasn't supplied in request get the municipality from the response
-  if (municipality.countyCode === '00') {
-    municipality = getMunicipality(lanskod.padStart(2, '0')+kommunkod.padStart(2, '0'));
   }
 
   // Build the object to return
